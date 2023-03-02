@@ -157,10 +157,26 @@ int main(int argc, char** argv)
 	glBindVertexArray(VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), NULL, GL_STATIC_DRAW);
+	cudaGraphicsResource_t cuda_resource_vbo;
+	// register this buffer object with CUDA
+	cudaError_t error = cudaGraphicsGLRegisterBuffer(&cuda_resource_vbo, VBO, cudaGraphicsRegisterFlagsNone);
+	float* g_vertex_buffer = nullptr;
+	error = cudaGraphicsMapResources(1, &cuda_resource_vbo);
+	size_t num_bytes;
+	error = cudaGraphicsResourceGetMappedPointer((void**)&g_vertex_buffer, &num_bytes, cuda_resource_vbo);
+	cudaMemcpy((void*)g_vertex_buffer, (void*)vertices, sizeof(vertices), cudaMemcpyHostToDevice);
+	error = cudaGraphicsUnmapResources(1, &cuda_resource_vbo);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), NULL, GL_STATIC_DRAW);
+	cudaGraphicsResource_t cuda_resource_ebo;
+	error = cudaGraphicsGLRegisterBuffer(&cuda_resource_ebo, EBO, cudaGraphicsRegisterFlagsNone);
+	float* g_element_buffer = nullptr;
+	error = cudaGraphicsMapResources(1, &cuda_resource_ebo);
+	error = cudaGraphicsResourceGetMappedPointer((void**)&g_element_buffer, &num_bytes, cuda_resource_ebo);
+	cudaMemcpy((void*)g_element_buffer, (void*)indices, sizeof(indices), cudaMemcpyHostToDevice);
+	error = cudaGraphicsUnmapResources(1, &cuda_resource_ebo);
 
 	// Position attribute (3 floats)
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
